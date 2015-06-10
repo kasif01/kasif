@@ -27,23 +27,39 @@ RF24 radio(7, 8);
 /**********************************************************/
 
 byte addresses[][6] = {"1Node", "2Node"};
- 
+
+enum Commands {
+  FORWARD = 8,
+  BACKWARD = 2,
+  LEFT = 4,
+  RIGHT = 6,
+  CLAW_FW = 18,
+  CLAW_BW = 12,
+  WRIST_FW = 28,
+  WRIST_BW = 22,
+  ELBOW_FW = 38,
+  ELBOW_BW = 32,
+  RIM_FW = 48,
+  RIM_BW = 42
+};
+
+
 void setup() {
   Serial.begin(9600);
-  
+
   // starting radio..........
   radio.begin();
 
   // Set the PA Level low to prevent power supply related issues since this is a
   // getting_started sketch, and the likelihood of close proximity of the devices. RF24_PA_MAX is default.
-  radio.setPALevel(RF24_PA_LOW); 
+  radio.setPALevel(RF24_PA_LOW);
 
   radio.openWritingPipe(addresses[0]);
   radio.openReadingPipe(1, addresses[1]);
- 
+
   radio.startListening();
   // starting radio ends....
-  
+
   pinMode(dir1PinA, OUTPUT);
   pinMode(dir2PinA, OUTPUT);
   pinMode(dir1PinB, OUTPUT);
@@ -53,12 +69,12 @@ void setup() {
   wrist.attach(wristPin);
   elbow.attach(elbowPin);
   rim.attach(rimPin);
-  
+
   claw.write(0);
   wrist.write(0);
   elbow.write(0);
   rim.write(0);
-  
+
   delay(2000);
 }
 
@@ -66,65 +82,65 @@ int maxDegree = 60;
 
 void loop()
 {
-  
+
   waitForCommand();
 
- // ************************************************* forward ***********//
-
- 
-  
-//  
-//  delay(500);
-//  for (int i = 0; i < maxDegree; i++) {
-//    delay(10);
-//    servoForward(claw);
-//  }
-//
-//
-//   delay(500);
-//  for (int i = 0; i < maxDegree; i++) {
-//    delay(10);
-//    servoBackward(claw);
-//  }
-
-//  delay(500);
-//  for (int i = 0; i < maxDegree; i++) {
-//    servoForward(wrist);
-//    delay(15);
-//  }
-//
-//  delay(500); 
-//  for (int i = 0; i < maxDegree; i++) {
-//    servoForward(elbow);
-//    delay(15);
-//  }
-//
-//  delay(500); 
-//  for (int i = 0; i < maxDegree; i++) {
-//    servoForward(rim);
-//    delay(15);
-//  }
-
- // ************************************************* backward ***********//
+  // ************************************************* forward ***********//
 
 
-//  delay(500);
-//  for (int i = 0; i < maxDegree; i++) {
-//    servoBackward(wrist);
-//    delay(15);
-//  }
-//
-//  delay(500); 
-//  for (int i = 0; i < maxDegree; i++) {
-//    servoBackward(elbow);
-//    delay(15);
-//  }
-//
-//  delay(500); 
-//  for (int i = 0; i < maxDegree; i++) {
-//    servoBackward(rim);
-//    delay(15);
-//  }
+
+  //
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    delay(10);
+  //    servoForward(claw);
+  //  }
+  //
+  //
+  //   delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    delay(10);
+  //    servoBackward(claw);
+  //  }
+
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    servoForward(wrist);
+  //    delay(15);
+  //  }
+  //
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    servoForward(elbow);
+  //    delay(15);
+  //  }
+  //
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    servoForward(rim);
+  //    delay(15);
+  //  }
+
+  // ************************************************* backward ***********//
+
+
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    servoBackward(wrist);
+  //    delay(15);
+  //  }
+  //
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    servoBackward(elbow);
+  //    delay(15);
+  //  }
+  //
+  //  delay(500);
+  //  for (int i = 0; i < maxDegree; i++) {
+  //    servoBackward(rim);
+  //    delay(15);
+  //  }
 
 
 
@@ -192,7 +208,7 @@ void stop() {
 void servoForward(Servo servo) {
   int position = servo.read();
 
-  if (position != 180)
+  if (position <= 180)
     servo.write(position + 1);
 
 }
@@ -200,13 +216,13 @@ void servoForward(Servo servo) {
 void servoBackward(Servo servo) {
   int position = servo.read();
 
-  if (position != 0)
+  if (position >= 0)
     servo.write(position - 1);
 }
 
 
-void waitForCommand(){
-  
+void waitForCommand() {
+
   int command;
 
   if ( radio.available()) {
@@ -216,10 +232,62 @@ void waitForCommand(){
     }
 
     radio.stopListening();                                        // First, stop listening so we can talk
-    radio.write( &command, sizeof(int) );              // Send the final one back.
+    radio.write( &command, sizeof(int) );
+
+    delay(15);
+    executeCommand(command);
+
+
+    // Send the final one back.
     radio.startListening();                                       // Now, resume listening so we catch the next packets.
     Serial.print(F("Sent ack "));
     Serial.println(command);
   }
-  
+
+}
+
+void executeCommand(int command) {
+
+  switch (command) {
+    case FORWARD:
+      forward();
+      break;
+    case BACKWARD:
+      backward();
+      break;
+    case LEFT:
+      left();
+      break;
+    case RIGHT:
+      right();
+      break;
+    case CLAW_FW:
+      servoForward(claw);
+      break;
+    case CLAW_BW:
+      servoBackward(claw);
+      break;
+    case WRIST_FW:
+      servoForward(wrist);
+      break;
+    case WRIST_BW:
+      servoBackward(wrist);
+      break;
+    case ELBOW_FW:
+      servoForward(elbow);
+      break;
+    case ELBOW_BW:
+      servoBackward(elbow);
+      break;
+    case RIM_FW:
+      servoForward(rim);
+      break;
+    case RIM_BW:
+      servoBackward(rim);
+      break;
+    default:
+      Serial.println("Received command was not recognised");
+  }
+
+
 }
